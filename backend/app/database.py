@@ -1,20 +1,15 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from urllib.parse import quote_plus
 
-from app.config import (
-    DB_HOST,
-    DB_PORT,
-    DB_NAME,
-    DB_USER,
-    DB_PASSWORD
-)
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-# Encode special characters in the password
-encoded_password = quote_plus(DB_PASSWORD)
+from app.config import settings
+
+password = quote_plus(settings.DB_PASSWORD)
 
 DATABASE_URL = (
-    f"mysql+pymysql://{DB_USER}:{encoded_password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"mysql+pymysql://{settings.DB_USER}:{password}"
+    f"@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 )
 
 engine = create_engine(DATABASE_URL)
@@ -24,3 +19,11 @@ SessionLocal = sessionmaker(
     autoflush=False,
     bind=engine
 )
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
