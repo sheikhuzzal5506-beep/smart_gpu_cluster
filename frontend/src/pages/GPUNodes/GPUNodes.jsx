@@ -1,154 +1,284 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import NodeCard from "../../components/ui/NodeCard";
 import NodeTable from "../../components/ui/NodeTable";
 import AddNodeModal from "../../components/ui/AddNodeModal";
 
-import { getNodes } from "../../services/gpuNodeService";
+import {
+  getNodes,
+  deleteNode,
+} from "../../services/gpuNodeService";
 
 export default function GPUNodes() {
 
-    const [nodes, setNodes] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const [nodes, setNodes] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
 
-    const [selectedNode, setSelectedNode] = useState(null);
+  const [search, setSearch] = useState("");
 
-    useEffect(() => {
+  const [statusFilter, setStatusFilter] = useState("All");
 
-        loadNodes();
+  const [healthFilter, setHealthFilter] = useState("All");
 
-    }, []);
+  const [sortBy, setSortBy] = useState("");
 
-    async function loadNodes() {
+  useEffect(() => {
+    loadNodes();
+  }, []);
 
-        try {
+  async function loadNodes() {
 
-            const data = await getNodes();
+    try {
 
-            setNodes(data);
+      const data = await getNodes();
 
-        } catch (err) {
+      setNodes(data);
 
-            console.error(err);
+    } catch (err) {
 
-        } finally {
+      console.error(err);
 
-            setLoading(false);
+    } finally {
 
-        }
-
-    }
-
-    function handleAddNode() {
-
-        setSelectedNode(null);
-
-        setOpen(true);
+      setLoading(false);
 
     }
 
-    function handleEditNode(node) {
+  }
 
-        setSelectedNode(node);
+  function handleAddNode() {
 
-        setOpen(true);
+    setSelectedNode(null);
+
+    setOpen(true);
+
+  }
+
+  function handleEditNode(node) {
+
+    setSelectedNode(node);
+
+    setOpen(true);
+
+  }
+
+  async function handleDeleteNode(node) {
+
+    const ok = window.confirm(
+      `Delete ${node.node_name}?`
+    );
+
+    if (!ok) return;
+
+    try {
+
+      await deleteNode(node.id);
+
+      await loadNodes();
+
+      alert("GPU Node Deleted Successfully!");
+
+    } catch (err) {
+
+      console.error(err);
+
+      alert("Delete Failed!");
 
     }
 
-    function handleCloseModal() {
+  }
 
-        setOpen(false);
+  function handleCloseModal() {
 
-        setSelectedNode(null);
+    setOpen(false);
 
-        loadNodes();
+    setSelectedNode(null);
+
+    loadNodes();
+
+  }
+
+  const filteredNodes = useMemo(() => {
+
+    let data = [...nodes];
+
+    if (search !== "") {
+
+      data = data.filter((node) =>
+        node.node_name
+          .toLowerCase()
+          .includes(search.toLowerCase())
+      );
 
     }
 
-    if (loading) {
+    if (statusFilter !== "All") {
 
-        return (
+      data = data.filter(
+        (node) => node.status === statusFilter
+      );
 
-            <div className="text-white text-xl">
+    }
 
-                Loading GPU Nodes...
+    if (healthFilter !== "All") {
 
-            </div>
+      data = data.filter(
+        (node) => node.health_status === healthFilter
+      );
 
+    }
+
+    switch (sortBy) {
+
+      case "name":
+
+        data.sort((a, b) =>
+          a.node_name.localeCompare(b.node_name)
         );
 
+        break;
+
+      case "gpu":
+
+        data.sort(
+          (a, b) =>
+            b.available_gpus - a.available_gpus
+        );
+
+        break;
+
+      case "utilization":
+
+        data.sort(
+          (a, b) =>
+            b.utilization_percent -
+            a.utilization_percent
+        );
+
+        break;
+
+      case "temperature":
+
+        data.sort(
+          (a, b) =>
+            b.temperature - a.temperature
+        );
+
+        break;
+
+      default:
+
+        break;
+
     }
+
+    return data;
+
+  }, [
+    nodes,
+    search,
+    statusFilter,
+    healthFilter,
+    sortBy,
+  ]);
+
+  if (loading) {
 
     return (
 
-        <div className="space-y-8">
+      <div className="text-white text-xl">
 
-            <div className="flex justify-between items-center">
+        Loading GPU Nodes...
 
-                <div>
+      </div>
 
-                    <h1 className="text-4xl font-bold text-white">
+    );
 
-                        GPU Nodes
+  }
 
-                    </h1>
+  return (
 
-                    <p className="text-slate-400 mt-2">
+    <div className="space-y-8">
 
-                        Manage all GPU servers.
+      <div className="flex justify-between items-center">
 
-                    </p>
+        <div>
 
-                </div>
+          <h1 className="text-4xl font-bold text-white">
+            GPU Nodes
+          </h1>
 
-                <button
-                    onClick={handleAddNode}
-                    className="bg-cyan-500 hover:bg-cyan-600 px-5 py-3 rounded-xl text-white"
-                >
-
-                    + Add GPU Node
-
-                </button>
-
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-
-                <NodeCard
-                    title="Total Nodes"
-                    value={nodes.length}
-                    color="text-cyan-400"
-                />
-
-                <NodeCard
-                    title="Healthy Nodes"
-                    value={nodes.filter(node => node.health_status === "Healthy").length}
-                    color="text-green-400"
-                />
-
-                <NodeCard
-                    title="Busy Nodes"
-                    value={nodes.filter(node => node.status === "Busy").length}
-                    color="text-yellow-400"
-                />
-
-            </div>
-
-            <NodeTable
-                nodes={nodes}
-                onEdit={handleEditNode}
-            />
-
-            <AddNodeModal
-                isOpen={open}
-                onClose={handleCloseModal}
-                selectedNode={selectedNode}
-            />
+          <p className="text-slate-400 mt-2">
+            Manage all GPU servers.
+          </p>
 
         </div>
 
-    );
+        <button
+          onClick={handleAddNode}
+          className="bg-cyan-500 hover:bg-cyan-600 px-5 py-3 rounded-xl text-white"
+        >
+          + Add GPU Node
+        </button>
+
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+
+        <NodeCard
+          title="Total Nodes"
+          value={filteredNodes.length}
+          color="text-cyan-400"
+        />
+
+        <NodeCard
+          title="Healthy Nodes"
+          value={
+            filteredNodes.filter(
+              (node) =>
+                node.health_status === "Healthy"
+            ).length
+          }
+          color="text-green-400"
+        />
+
+        <NodeCard
+          title="Busy Nodes"
+          value={
+            filteredNodes.filter(
+              (node) =>
+                node.status === "Busy"
+            ).length
+          }
+          color="text-yellow-400"
+        />
+              </div>
+
+      <NodeTable
+        nodes={filteredNodes}
+        search={search}
+        setSearch={setSearch}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        healthFilter={healthFilter}
+        setHealthFilter={setHealthFilter}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        onEdit={handleEditNode}
+        onDelete={handleDeleteNode}
+      />
+
+      <AddNodeModal
+        isOpen={open}
+        onClose={handleCloseModal}
+        selectedNode={selectedNode}
+      />
+
+    </div>
+
+  );
 
 }
