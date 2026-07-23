@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import SessionLocal, engine
@@ -26,6 +27,25 @@ app = FastAPI(
     title="Intelligent GPU Cluster Scheduler API",
     version="1.0.0",
 )
+
+# ===========================
+# CORS CONFIGURATION
+# ===========================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ===========================
+# Routers
+# ===========================
 
 app.include_router(users_router)
 app.include_router(nodes_router)

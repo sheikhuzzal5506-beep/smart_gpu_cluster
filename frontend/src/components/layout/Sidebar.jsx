@@ -43,7 +43,7 @@ const menuItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="w-64 h-screen bg-[#0F172A] text-white flex flex-col">
+    <aside className="w-64 h-screen bg-slate-900 text-white flex flex-col">
 
       <div className="p-6 border-b border-slate-700">
         <h1 className="text-xl font-bold text-cyan-400">
@@ -62,10 +62,10 @@ export default function Sidebar() {
             key={item.name}
             to={item.path}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-4 py-3 transition-all duration-300 ${
+              `flex items-center gap-3 px-4 py-3 rounded-xl transition ${
                 isActive
                   ? "bg-cyan-500 text-white"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  : "hover:bg-slate-800 text-slate-300"
               }`
             }
           >
@@ -81,11 +81,11 @@ export default function Sidebar() {
 
         <div className="rounded-xl bg-slate-800 p-4">
 
-          <p className="text-sm font-semibold">
+          <p className="font-semibold">
             Cluster Status
           </p>
 
-          <p className="text-green-400 text-xs mt-2">
+          <p className="text-green-400 text-sm mt-2">
             ● Online
           </p>
 
