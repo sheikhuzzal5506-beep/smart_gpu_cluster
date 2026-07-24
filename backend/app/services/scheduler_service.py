@@ -6,15 +6,15 @@ from app.models.scheduler_config import SchedulerConfig
 from app.services.history_service import add_history
 
 
-# -------------------------------------------------
-# Configuration
-# -------------------------------------------------
+# ==========================================================
+# Scheduler Configuration
+# ==========================================================
 
 def get_scheduler_config(db: Session):
 
     config = db.query(SchedulerConfig).first()
 
-    if not config:
+    if config is None:
         config = SchedulerConfig(
             algorithm="Least Loaded",
             priority_enabled=True,
@@ -27,9 +27,9 @@ def get_scheduler_config(db: Session):
     return config
 
 
-# -------------------------------------------------
-# Available Nodes
-# -------------------------------------------------
+# ==========================================================
+# Available GPU Nodes
+# ==========================================================
 
 def get_available_nodes(db: Session, job: Job):
 
@@ -37,17 +37,40 @@ def get_available_nodes(db: Session, job: Job):
         db.query(GPUNode)
         .filter(
             GPUNode.status == "Online",
+            GPUNode.health_status == "Healthy",
             GPUNode.available_gpus >= job.gpu_required,
             GPUNode.gpu_memory_gb >= job.gpu_memory_required,
         )
-        .order_by(GPUNode.id.asc())
         .all()
     )
 
 
-# -------------------------------------------------
-# Least Loaded
-# -------------------------------------------------
+# ==========================================================
+# AI Score
+# ==========================================================
+
+def calculate_score(node: GPUNode):
+
+    score = 0
+
+    # More available GPUs = Better
+    score += node.available_gpus * 40
+
+    # Lower utilization = Better
+    score += (100 - node.utilization_percent)
+
+    # Lower temperature = Better
+    score += (100 - node.temperature)
+
+    # Lower power usage = Better
+    score += (100 - node.power_usage)
+
+    return score
+
+
+# ==========================================================
+# Scheduling Algorithms
+# ==========================================================
 
 def least_loaded_algorithm(db: Session, job: Job):
 
@@ -56,12 +79,8 @@ def least_loaded_algorithm(db: Session, job: Job):
     if not nodes:
         return None
 
-    return max(nodes, key=lambda n: n.available_gpus)
+    return max(nodes, key=calculate_score)
 
-
-# -------------------------------------------------
-# First Fit
-# -------------------------------------------------
 
 def first_fit_algorithm(db: Session, job: Job):
 
@@ -72,10 +91,6 @@ def first_fit_algorithm(db: Session, job: Job):
 
     return nodes[0]
 
-
-# -------------------------------------------------
-# Best Fit
-# -------------------------------------------------
 
 def best_fit_algorithm(db: Session, job: Job):
 
@@ -89,10 +104,6 @@ def best_fit_algorithm(db: Session, job: Job):
         key=lambda n: n.available_gpus - job.gpu_required,
     )
 
-
-# -------------------------------------------------
-# Round Robin
-# -------------------------------------------------
 
 def round_robin_algorithm(db: Session, job: Job):
 
@@ -116,32 +127,55 @@ def round_robin_algorithm(db: Session, job: Job):
     return node
 
 
-# -------------------------------------------------
+# ==========================================================
 # Select Algorithm
-# -------------------------------------------------
+# ==========================================================
 
 def select_node(db: Session, job: Job):
 
-    algorithm = get_scheduler_config(db).algorithm
+    config = get_scheduler_config(db)
 
-    if algorithm == "Least Loaded":
+    if config.algorithm == "Least Loaded":
         return least_loaded_algorithm(db, job)
 
-    elif algorithm == "First Fit":
+    if config.algorithm == "First Fit":
         return first_fit_algorithm(db, job)
 
-    elif algorithm == "Best Fit":
+    if config.algorithm == "Best Fit":
         return best_fit_algorithm(db, job)
 
-    elif algorithm == "Round Robin":
+    if config.algorithm == "Round Robin":
         return round_robin_algorithm(db, job)
 
     return least_loaded_algorithm(db, job)
 
 
-# -------------------------------------------------
+# ==========================================================
+# Update Node Statistics
+# ==========================================================
+
+def update_node_statistics(node: GPUNode):
+
+    used = node.total_gpus - node.available_gpus
+
+    node.utilization_percent = int(
+        (used / node.total_gpus) * 100
+    )
+
+    node.temperature = min(
+        85,
+        35 + (used * 8)
+    )
+
+    node.power_usage = min(
+        100,
+        used * 20
+    )
+
+
+# ==========================================================
 # Schedule One Job
-# -------------------------------------------------
+# ==========================================================
 
 def schedule_job(db: Session, job: Job):
 
@@ -163,43 +197,59 @@ def schedule_job(db: Session, job: Job):
 
         return False
 
-    job.assigned_node = node.node_name
-    job.status = "Running"
+    try:
 
-    node.available_gpus -= job.gpu_required
+        job.assigned_node = node.node_name
+        job.status = "Running"
 
-    db.commit()
+        node.available_gpus -= job.gpu_required
 
-    add_history(
-        db,
-        job.id,
-        node.node_name,
-        "Assigned",
-        f"Assigned using {get_scheduler_config(db).algorithm}",
-    )
+        update_node_statistics(node)
 
-    add_history(
-        db,
-        job.id,
-        node.node_name,
-        "Running",
-        "Job started successfully",
-    )
+        db.commit()
 
-    return True
+        db.refresh(job)
+        db.refresh(node)
+
+        config = get_scheduler_config(db)
+
+        add_history(
+            db,
+            job.id,
+            node.node_name,
+            "Assigned",
+            f"Assigned using {config.algorithm}",
+        )
+
+        add_history(
+            db,
+            job.id,
+            node.node_name,
+            "Running",
+            "Job started successfully",
+        )
+
+        return True
+
+    except Exception:
+
+        db.rollback()
+        raise
 
 
-# -------------------------------------------------
-# Schedule Pending Jobs
-# -------------------------------------------------
+# ==========================================================
+# Schedule All Pending Jobs
+# ==========================================================
 
 def schedule_pending_jobs(db: Session):
 
     config = get_scheduler_config(db)
 
-    jobs = db.query(Job).filter(
-        Job.status == "Pending"
-    ).all()
+    jobs = (
+        db.query(Job)
+        .filter(Job.status == "Pending")
+        .all()
+    )
 
     if config.priority_enabled:
 
@@ -211,15 +261,39 @@ def schedule_pending_jobs(db: Session):
 
         jobs = sorted(
             jobs,
-            key=lambda j: priority.get(j.priority, 99),
+            key=lambda j: priority.get(j.priority, 99)
         )
 
     else:
 
         jobs = sorted(
             jobs,
-            key=lambda j: j.id,
+            key=lambda j: j.id
         )
 
+    scheduled = 0
+
     for job in jobs:
-        schedule_job(db, job)
+
+        if schedule_job(db, job):
+            scheduled += 1
+
+    return {
+        "message": "Scheduling completed",
+        "algorithm": config.algorithm,
+        "jobs_scheduled": scheduled,
+        "total_jobs": len(jobs),
+    }
+
+
+# ==========================================================
+# Queue
+# ==========================================================
+
+def get_scheduler_queue(db: Session):
+
+    return (
+        db.query(Job)
+        .filter(Job.status == "Pending")
+        .all()
+    )
