@@ -1,12 +1,8 @@
-import axios from "axios";
+import API from "./api";
 
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
+// =========================
+// GET MONITORING DATA
+// =========================
 export const getMonitoringData = async () => {
   try {
     const response = await API.get("/monitoring/");
@@ -17,4 +13,10 @@ export const getMonitoringData = async () => {
   }
 };
 
-export default API;
+// =========================
+// OPTIONAL: REFRESH MONITORING
+// =========================
+export const refreshMonitoring = async () => {
+  const response = await API.get("/monitoring/");
+  return response.data;
+};

@@ -1,18 +1,14 @@
-import axios from "axios";
-
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-});
+import API from "./api";
 
 export const getDashboardStats = async () => {
   try {
-    const [nodes, jobs] = await Promise.all([
+    const [nodesResponse, jobsResponse] = await Promise.all([
       API.get("/nodes/"),
       API.get("/jobs/"),
     ]);
 
-    const gpuNodes = nodes.data;
-    const jobList = jobs.data;
+    const gpuNodes = nodesResponse.data;
+    const jobList = jobsResponse.data;
 
     const totalNodes = gpuNodes.length;
 
@@ -37,9 +33,9 @@ export const getDashboardStats = async () => {
     const usedGPUs = totalGPUs - availableGPUs;
 
     const utilization =
-      totalGPUs === 0
-        ? 0
-        : Math.round((usedGPUs / totalGPUs) * 100);
+      totalGPUs > 0
+        ? Math.round((usedGPUs / totalGPUs) * 100)
+        : 0;
 
     const queuedJobs = jobList.filter(
       (job) => job.status === "Queued"

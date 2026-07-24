@@ -1,55 +1,58 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import engine
-from app.models.base import Base
-
-# Import all models (registers them with SQLAlchemy)
-import app.models
-
-# Import routers
-from app.routers.users import router as users_router
-from app.routers.nodes import router as nodes_router
-from app.routers.jobs import router as jobs_router
-from app.routers.dashboard import router as dashboard_router
-from app.routers.monitoring import router as monitoring_router
-from app.routers.history import router as history_router
-from app.routers.scheduler_config import router as scheduler_config_router
-from app.routers.scheduler import router as scheduler_router
-from app.routers.auth import router as auth_router
+from app.routes import (
+    auth,
+    dashboard,
+    nodes,
+    jobs,
+    monitoring,
+    history,
+    scheduler,
+    scheduler_config,
+    users,
+)
 
 app = FastAPI(
     title="Intelligent GPU Cluster Scheduler API",
-    description="Backend API for Intelligent GPU Cluster Scheduler",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# ==========================================================
+# CORS Configuration
+# ==========================================================
 
-# Register routers
-app.include_router(users_router)
-app.include_router(nodes_router)
-app.include_router(jobs_router)
-app.include_router(dashboard_router)
-app.include_router(monitoring_router)
-app.include_router(history_router)
-app.include_router(scheduler_config_router)
-app.include_router(scheduler_router)
-app.include_router(auth_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# ==========================================================
+# Register Routers
+# ==========================================================
+
+app.include_router(auth.router)
+app.include_router(users.router)
+app.include_router(dashboard.router)
+app.include_router(nodes.router)
+app.include_router(jobs.router)
+app.include_router(monitoring.router)
+app.include_router(history.router)
+app.include_router(scheduler.router)
+app.include_router(scheduler_config.router)
+
+# ==========================================================
+# Root Endpoint
+# ==========================================================
 
 @app.get("/")
 def root():
     return {
-        "message": "Intelligent GPU Cluster Scheduler API is Running",
-        "version": "1.0.0",
-        "status": "Online"
-    }
-
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "service": "GPU Cluster Scheduler API"
+        "message": "Intelligent GPU Cluster Scheduler API is running!"
     }

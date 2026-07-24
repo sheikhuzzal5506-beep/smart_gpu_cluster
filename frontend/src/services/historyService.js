@@ -1,12 +1,8 @@
-import axios from "axios";
+import API from "./api";
 
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
+// =========================
+// GET JOB HISTORY
+// =========================
 export const getHistory = async () => {
   try {
     const response = await API.get("/history/");
@@ -17,4 +13,28 @@ export const getHistory = async () => {
   }
 };
 
-export default API;
+// =========================
+// GET HISTORY BY ID
+// =========================
+export const getHistoryById = async (id) => {
+  const response = await API.get(`/history/${id}`);
+  return response.data;
+};
+
+// =========================
+// DELETE HISTORY
+// Only use if your backend supports it.
+// =========================
+export const deleteHistory = async (id) => {
+  const response = await API.delete(`/history/${id}`);
+  return response.data;
+};
+
+// =========================
+// CLEAR ALL HISTORY
+// Only use if your backend supports it.
+// =========================
+export const clearHistory = async () => {
+  const response = await API.delete("/history/");
+  return response.data;
+};

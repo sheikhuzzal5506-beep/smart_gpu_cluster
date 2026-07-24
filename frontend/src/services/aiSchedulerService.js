@@ -1,17 +1,16 @@
-import axios from "axios";
+import API from "./api";
 
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
+// =========================
+// GET ALL GPU NODES
+// =========================
 export const getNodes = async () => {
   const response = await API.get("/nodes/");
   return response.data;
 };
 
+// =========================
+// CALCULATE AI SCORES
+// =========================
 export const calculateScores = async () => {
   const nodes = await getNodes();
 
@@ -38,13 +37,29 @@ export const calculateScores = async () => {
 
     return {
       ...node,
-      ai_score: score.toFixed(2),
+      ai_score: Number(score.toFixed(2)),
     };
   });
 
-  scoredNodes.sort(
-    (a, b) => b.ai_score - a.ai_score
-  );
+  scoredNodes.sort((a, b) => b.ai_score - a.ai_score);
 
   return scoredNodes;
+};
+
+// =========================
+// GET BEST NODE
+// =========================
+export const getBestNode = async () => {
+  const nodes = await calculateScores();
+
+  return nodes.length > 0 ? nodes[0] : null;
+};
+
+// =========================
+// GET TOP 5 NODES
+// =========================
+export const getTopNodes = async (limit = 5) => {
+  const nodes = await calculateScores();
+
+  return nodes.slice(0, limit);
 };

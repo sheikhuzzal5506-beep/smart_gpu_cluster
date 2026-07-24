@@ -1,31 +1,10 @@
-import axios from "axios";
-
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  },
-});
-
-// Automatically attach JWT to every request
-API.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+import API from "./api";
 
 // ===============================
 // Authentication
 // ===============================
 
+// Login
 export const login = async (credentials) => {
   const response = await API.post("/auth/login", credentials);
 
@@ -36,18 +15,32 @@ export const login = async (credentials) => {
   return response.data;
 };
 
+// Register
 export const register = async (user) => {
   const response = await API.post("/auth/register", user);
-
   return response.data;
 };
 
+// Logout
 export const logout = () => {
   localStorage.removeItem("token");
 };
 
+// Check if logged in
 export const isAuthenticated = () => {
   return !!localStorage.getItem("token");
 };
 
-export default API;
+// Get JWT token
+export const getToken = () => {
+  return localStorage.getItem("token");
+};
+
+// Get Authorization header
+export const getAuthHeader = () => {
+  const token = getToken();
+
+  return token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+};

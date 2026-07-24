@@ -1,14 +1,18 @@
-import axios from "axios";
-
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-});
+import API from "./api";
 
 // =========================
 // GET ALL NODES
 // =========================
 export const getNodes = async () => {
   const response = await API.get("/nodes/");
+  return response.data;
+};
+
+// =========================
+// GET SINGLE NODE
+// =========================
+export const getNodeById = async (id) => {
+  const response = await API.get(`/nodes/${id}`);
   return response.data;
 };
 
@@ -35,5 +39,3 @@ export const deleteNode = async (id) => {
   const response = await API.delete(`/nodes/${id}`);
   return response.data;
 };
-
-export default API;

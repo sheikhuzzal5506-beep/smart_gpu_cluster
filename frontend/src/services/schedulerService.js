@@ -1,12 +1,8 @@
-import axios from "axios";
+import API from "./api";
 
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
+// =========================
+// GET JOB QUEUE
+// =========================
 export const getQueue = async () => {
   try {
     const response = await API.get("/scheduler/queue");
@@ -17,14 +13,36 @@ export const getQueue = async () => {
   }
 };
 
-export const submitJob = async (data) => {
-  const response = await API.post("/scheduler/submit", data);
+// =========================
+// SUBMIT JOB TO SCHEDULER
+// =========================
+export const submitJob = async (jobData) => {
+  const response = await API.post("/scheduler/submit", jobData);
   return response.data;
 };
 
+// =========================
+// CANCEL JOB
+// =========================
 export const cancelJob = async (id) => {
   const response = await API.delete(`/scheduler/${id}`);
   return response.data;
 };
 
-export default API;
+// =========================
+// OPTIONAL: RUN SCHEDULER
+// Only use if your backend has this endpoint.
+// =========================
+export const runScheduler = async () => {
+  const response = await API.post("/scheduler/run");
+  return response.data;
+};
+
+// =========================
+// OPTIONAL: GET SCHEDULER STATUS
+// Only use if your backend has this endpoint.
+// =========================
+export const getSchedulerStatus = async () => {
+  const response = await API.get("/scheduler/status");
+  return response.data;
+};

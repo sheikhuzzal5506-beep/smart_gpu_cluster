@@ -1,12 +1,8 @@
-import axios from "axios";
+import API from "./api";
 
-const API = axios.create({
-  baseURL: "http://127.0.0.1:8000",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
+// =========================
+// GET ALL JOBS
+// =========================
 export const getJobs = async () => {
   try {
     const response = await API.get("/jobs/");
@@ -17,24 +13,43 @@ export const getJobs = async () => {
   }
 };
 
-export const getJob = async (id) => {
+// =========================
+// GET SINGLE JOB
+// =========================
+export const getJobById = async (id) => {
   const response = await API.get(`/jobs/${id}`);
   return response.data;
 };
 
-export const createJob = async (data) => {
-  const response = await API.post("/jobs/", data);
+// =========================
+// CREATE JOB
+// =========================
+export const createJob = async (jobData) => {
+  const response = await API.post("/jobs/", jobData);
   return response.data;
 };
 
-export const updateJob = async (id, data) => {
-  const response = await API.put(`/jobs/${id}`, data);
+// =========================
+// UPDATE JOB
+// =========================
+export const updateJob = async (id, jobData) => {
+  const response = await API.put(`/jobs/${id}`, jobData);
   return response.data;
 };
 
+// =========================
+// DELETE JOB
+// =========================
 export const deleteJob = async (id) => {
   const response = await API.delete(`/jobs/${id}`);
   return response.data;
 };
 
-export default API;
+// =========================
+// OPTIONAL: CHANGE JOB STATUS
+// (Use if your backend supports it. Otherwise leave unused.)
+// =========================
+export const updateJobStatus = async (id, status) => {
+  const response = await API.patch(`/jobs/${id}`, { status });
+  return response.data;
+};
